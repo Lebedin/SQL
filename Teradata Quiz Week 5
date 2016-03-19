@@ -32,3 +32,23 @@ GROUP BY sku
 ORDER BY increase_in_sales DESC;
 
 OUTPUT:3949538
+
+4. What vendor has the greatest number of distinct skus in the transaction table that do not exist in the skstinfo table?
+
+SELECT TOP 1 COUNT(DISTINCT(s.sku)) AS count_skus, s.vendor
+FROM
+(SELECT DISTINCT(uniq_t_skus.sku) AS sku
+FROM 
+(SELECT DISTINCT(t.sku) AS sku
+FROM trnsact t) AS uniq_t_skus
+LEFT OUTER JOIN
+(SELECT DISTINCT(s.sku) AS sku
+FROM skstinfo s) AS uniq_s_skus
+ON uniq_t_skus.sku=uniq_s_skus.sku
+WHERE uniq_s_skus.sku IS NULL) AS uniq_t_skus_not_in_s
+INNER JOIN skuinfo s
+ON uniq_t_skus_not_in_s.sku=s.sku
+GROUP BY s.vendor
+ORDER BY count_skus DESC;
+
+OUTPUT:5715232
