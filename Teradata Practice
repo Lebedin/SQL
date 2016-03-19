@@ -10,3 +10,107 @@ june_sales+july_sales+august_sales as total_sales
 FROM trnsact
 GROUP BY sku
 ORDER BY total_sales DESC;
+
+Exercise 3. How many distinct dates are there in the saledate column of the transaction
+table for each month/year/store combination in the database? Sort your results by the
+number of days per combination in ascending order.
+
+SELECT
+EXTRACT(YEAR FROM saledate) AS s_year, 
+EXTRACT(MONTH FROM saledate) AS s_month, 
+store,
+COUNT(DISTINCT(saledate)) AS count_dates
+FROM trnsact
+GROUP BY s_year, s_month, store
+ORDER BY count_dates ASC;
+
+Exercise 4. What is the average daily revenue for each store/month/year combination in
+the database? Calculate this by dividing the total revenue for a group by the number of
+sales days available in the transaction table for that group.
+
+SELECT
+EXTRACT(YEAR FROM saledate) AS s_year, 
+EXTRACT(MONTH FROM saledate) AS s_month, 
+store,
+COUNT(DISTINCT(saledate)) AS count_dates,
+SUM(amt) AS monthly_revenue,
+monthly_revenue/count_dates AS daily_revenue
+FROM trnsact
+WHERE stype='P'
+GROUP BY s_year, s_month, store
+ORDER BY count_dates ASC;
+
+____________________________
+
+AVERAGE DAILY REVENUE
+
+SELECT
+EXTRACT(YEAR FROM saledate) AS s_year, 
+EXTRACT(MONTH FROM saledate) AS s_month, 
+store,
+COUNT(DISTINCT(saledate)) AS count_dates,
+SUM(amt) AS monthly_revenue,
+monthly_revenue/count_dates AS daily_revenue
+FROM trnsact
+WHERE stype='P' AND NOT(s_year='2005' AND s_month='8')
+HAVING count_dates>=20
+GROUP BY s_year, s_month, store
+ORDER BY count_dates ASC;
+
+____________________________
+
+Exercise 5. What is the average daily revenue brought in by Dillard’s stores in areas of
+high, medium, or low levels of high school education?
+
+SELECT
+EXTRACT(YEAR FROM t.saledate) AS s_year, 
+EXTRACT(MONTH FROM t.saledate) AS s_month, 
+COUNT(DISTINCT(t.saledate)) AS count_dates,
+SUM(t.amt) AS monthly_revenue,
+monthly_revenue/count_dates AS daily_revenue,
+store_to_education.education_level AS education
+FROM trnsact t JOIN(
+SELECT 
+store, CASE
+WHEN msa_high BETWEEN 50 AND 60 THEN 'low'
+WHEN msa_high BETWEEN 60 AND 70 THEN 'medium'
+WHEN msa_high>70 THEN 'high'
+END AS education_level
+FROM store_msa) AS store_to_education ON t.store=store_to_education.store
+WHERE t.stype='P' AND NOT(s_year='2005' AND s_month='8')
+HAVING count_dates>=20
+GROUP BY s_year, s_month, education
+ORDER BY daily_revenue DESC;
+
+Exercise 6. Compare the average daily revenues of the stores with the highest median
+msa_income and the lowest median msa_income. In what city and state were these stores,
+and which store had a higher average daily revenue? 
+
+SELECT
+EXTRACT(YEAR FROM t.saledate) AS s_year, 
+EXTRACT(MONTH FROM t.saledate) AS s_month, 
+COUNT(DISTINCT(t.saledate)) AS count_dates,
+SUM(t.amt) AS monthly_revenue,
+monthly_revenue/count_dates AS daily_revenue,
+store_to_education.education_level AS education,
+store_to_education.income AS income,
+store_to_education.city AS city,
+store_to_education.state AS state
+FROM trnsact t JOIN(
+SELECT 
+store, msa_income AS income, city, state, CASE
+WHEN msa_high BETWEEN 50 AND 60 THEN 'low'
+WHEN msa_high BETWEEN 60 AND 70 THEN 'medium'
+WHEN msa_high>70 THEN 'high'
+END AS education_level
+FROM store_msa) AS store_to_education ON t.store=store_to_education.store
+WHERE t.stype='P' AND NOT(s_year='2005' AND s_month='8') 
+AND (income=(SELECT MAX(msa_income) FROM store_msa) OR income=(SELECT MIN(msa_income) FROM store_msa))
+HAVING count_dates>=20
+GROUP BY s_year, s_month, education, income, city, state
+ORDER BY daily_revenue DESC;
+
+Exercise 7: What is the brand of the sku with the greatest standard deviation in sprice?
+Only examine skus that have been part of over 100 transactions.
+
+
