@@ -1,0 +1,34 @@
+1. How many distinct skus have the brand “Polo fas”, and are either size “XXL” or “black” in color?
+
+SELECT COUNT(DISTINCT(sku))
+FROM skuinfo
+WHERE brand='Polo fas' AND (size='XXL' OR color='black');
+
+OUTPUT: 13623
+
+2. There was one store in the database which had only 11 days in one of its months 
+(in other words, that store/month/year combination only contained 11 days of transaction data). 
+In what city and state was this store located?
+
+SELECT city, state
+FROM strinfo
+WHERE store=(
+SELECT store
+FROM trnsact
+GROUP BY store, EXTRACT(month from saledate), EXTRACT(year from saledate)
+HAVING COUNT(DISTINCT(EXTRACT(day from saledate)))=11);
+
+OUTPUT: ATLANTA GA
+
+3. Which sku number had the greatest increase in total sales revenue from November to December?
+
+SELECT TOP 1
+sku,
+SUM(CASE WHEN EXTRACT(MONTH FROM saledate)=11 THEN amt END) AS november_sales, 
+SUM(CASE WHEN EXTRACT(MONTH FROM saledate)=12 THEN amt END) AS december_sales,
+december_sales-november_sales as increase_in_sales
+FROM trnsact
+GROUP BY sku
+ORDER BY increase_in_sales DESC;
+
+OUTPUT:3949538
