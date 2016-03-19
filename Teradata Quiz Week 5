@@ -52,3 +52,25 @@ GROUP BY s.vendor
 ORDER BY count_skus DESC;
 
 OUTPUT:5715232
+
+5. What is the brand of the sku with the greatest standard deviation in sprice? 
+Only examine skus which have been part of over 100 transactions.
+
+SELECT TOP 5 s.brand, hundred_trnsact_skus.stddev AS stddev
+FROM skuinfo s INNER JOIN
+(SELECT DISTINCT sku, COUNT(sprice) AS transactions, STDDEV_SAMP(sprice) AS stddev
+FROM trnsact
+GROUP BY sku
+HAVING transactions>100) AS hundred_trnsact_skus
+ON s.sku=hundred_trnsact_skus.sku
+GROUP BY s.brand, stddev
+ORDER BY stddev DESC;
+
+OUTPUT:
+CABERNET 178.6
+HART SCH 175.9
+POLO FAS 170.5
+POLO FAS 167.5
+POLO FAS 156.6
+
+6.
