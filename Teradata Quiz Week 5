@@ -64,6 +64,17 @@ GROUP BY sku
 HAVING transactions>100) AS hundred_trnsact_skus
 ON s.sku=hundred_trnsact_skus.sku
 GROUP BY s.brand, stddev
+ORDER BY stddev DESC; 
+
+ALTERNATIVE:
+
+SELECT DISTINCT s.brand, hundred_trnsact_skus.stddev AS stddev
+FROM skuinfo s INNER JOIN
+(SELECT DISTINCT sku, COUNT(sprice) AS transactions, STDDEV_SAMP(sprice) AS stddev
+FROM trnsact
+GROUP BY sku
+HAVING transactions>91) AS hundred_trnsact_skus
+ON s.sku=hundred_trnsact_skus.sku
 ORDER BY stddev DESC;
 
 OUTPUT:
@@ -73,4 +84,137 @@ POLO FAS 170.5
 POLO FAS 167.5
 POLO FAS 156.6
 
-6.
+6. What is the city and state of the store which had the greatest increase in average daily revenue 
+(as I define it in Teradata Week 5 Exercise Guide) from November to December?
+
+SELECT st.store, st.city, st.state, 
+SUM(CASE WHEN EXTRACT(MONTH FROM t.saledate)=11 THEN t.amt END) AS november_revenue,
+COUNT(DISTINCT(CASE WHEN EXTRACT(MONTH FROM t.saledate)=11 THEN t.saledate END)) AS count_n_dates,
+SUM(CASE WHEN EXTRACT(MONTH FROM t.saledate)=12 THEN t.amt END) AS december_revenue,
+COUNT(DISTINCT(CASE WHEN EXTRACT(MONTH FROM t.saledate)=12 THEN t.saledate END)) AS count_d_dates,
+november_revenue/count_n_dates AS november_d_revenue,
+december_revenue/count_d_dates AS december_d_revenue,
+((december_d_revenue-november_d_revenue)/november_d_revenue)*100 AS increase_in_d_revenue
+FROM store_msa st INNER JOIN(
+SELECT store, saledate, amt
+FROM trnsact
+WHERE stype='P' AND (EXTRACT(MONTH FROM saledate)=11 OR EXTRACT(MONTH FROM saledate)=12)) AS t
+ON st.store=t.store
+WHERE st.city IN('McAllen','Tucson','Little Rock','Metairie')
+GROUP BY st.store, st.city, st.state
+HAVING count_n_dates>20 AND count_d_dates>20
+ORDER BY increase_in_d_revenue DESC;
+
+7. Compare the average daily revenue (as I define it in Teradata Week 5 Exercise Guide) 
+of the store with the highest msa_income and the store with the lowest median msa_income 
+(according to the msa_income field). In what city and state were these two stores, 
+and which store had a higher average daily revenue?
+
+SELECT
+EXTRACT(YEAR FROM t.saledate) AS s_year, 
+EXTRACT(MONTH FROM t.saledate) AS s_month, 
+COUNT(DISTINCT(t.saledate)) AS count_dates,
+SUM(t.amt) AS monthly_revenue,
+monthly_revenue/count_dates AS daily_revenue,
+store_to_education.education_level AS education,
+store_to_education.income AS income,
+store_to_education.city AS city,
+store_to_education.state AS state
+FROM trnsact t JOIN(
+SELECT 
+store, msa_income AS income, city, state, CASE
+WHEN msa_high BETWEEN 50 AND 60 THEN 'low'
+WHEN msa_high BETWEEN 60 AND 70 THEN 'medium'
+WHEN msa_high>70 THEN 'high'
+END AS education_level
+FROM store_msa) AS store_to_education ON t.store=store_to_education.store
+WHERE t.stype='P' AND NOT(s_year='2005' AND s_month='8') 
+AND (income=(SELECT MAX(msa_income) FROM store_msa) OR income=(SELECT MIN(msa_income) FROM store_msa))
+HAVING count_dates>=20
+GROUP BY s_year, s_month, education, income, city, state
+ORDER BY daily_revenue DESC;
+
+OUTPUT: Spanish Fort, AL, lower revenue / McAllen, TX, higher revenue
+
+8. Divide the msa_income groups up so that msa_incomes between 1 and 20,000 are labeled 'low', msa_incomes between 20,001 and 30,000 are labeled 'med-low', msa_incomes between 30,001 and 40,000 are labeled 'med-high', and msa_incomes between 40,001 and 60,000 are labeled 'high'. Which of these groups has the highest average daily revenue (as I define it in Teradata Week 5 Exercise Guide) per store?
+
+SELECT
+EXTRACT(YEAR FROM t.saledate) AS s_year, 
+EXTRACT(MONTH FROM t.saledate) AS s_month, 
+COUNT(DISTINCT(t.saledate)) AS count_dates,
+SUM(t.amt) AS monthly_revenue,
+monthly_revenue/count_dates AS daily_revenue,
+store_to_education.income AS income
+FROM trnsact t JOIN(
+SELECT 
+store, city, state, CASE
+WHEN msa_income BETWEEN '1' AND '20000' THEN 'low'
+WHEN msa_income BETWEEN '20001' AND '30000' THEN 'med-low'
+WHEN msa_income BETWEEN '30001' AND '40000' THEN 'med-high'
+WHEN msa_income BETWEEN '40001' AND '60000' THEN 'high'
+END AS income
+FROM store_msa) AS store_to_education ON t.store=store_to_education.store
+WHERE t.stype='P' AND NOT(s_year='2005' AND s_month='8') 
+HAVING count_dates>=20
+GROUP BY income, s_year, s_month
+ORDER BY daily_revenue DESC;
+
+9. Divide stores up so that stores with msa populations between 1 and 100,000 are labeled 'very small', stores with msa populations between 100,001 and 200,000 are labeled 'small', stores with msa populations between 200,001 and 500,000 are labeled 'med_small', stores with msa populations between 500,001 and 1,000,000 are labeled 'med_large', stores with msa populations between 1,000,001 and 5,000,000 are labeled “large”, and stores with msa_population greater than 5,000,000 are labeled “very large”. What is the average daily revenue (as I define it in Teradata Week 5 Exercise Guide) for a store in a “very large” population msa?
+
+SELECT AVG(money.daily_revenue)
+FROM (
+ SELECT t.store AS store,
+ SUM(t.amt) AS total_revenue, COUNT(DISTINCT(t.saledate)) AS count_dates, 
+ total_revenue/count_dates AS daily_revenue
+ FROM trnsact t INNER JOIN (
+  SELECT store, CASE
+  WHEN msa_pop>5000000 THEN 'very_large'
+  ELSE 'not_large'
+  END AS big_cities
+  FROM store_msa
+  WHERE big_cities='very_large') AS big_cities
+ ON t.store=big_cities.store
+ WHERE t.stype='P'
+ AND NOT((EXTRACT(YEAR FROM t.saledate)='2005') AND (EXTRACT(MONTH FROM t.saledate)='8'))
+GROUP BY t.store) AS money;
+
+10. Which department in which store had the greatest percent increase in average daily sales revenue from November to December, and what city and state was that store located in? Only examine departments whose total sales were at least $1,000 in both November and December.
+
+SELECT deptinfo.deptdesc, skuinfo.dept, strinfo.store, strinfo.city, strinfo.state, 
+SUM(CASE WHEN EXTRACT(MONTH FROM t.saledate)=11 THEN t.amt END) AS november_revenue,
+COUNT(DISTINCT(CASE WHEN EXTRACT(MONTH FROM t.saledate)=11 THEN t.saledate END)) AS count_n_dates,
+SUM(CASE WHEN EXTRACT(MONTH FROM t.saledate)=12 THEN t.amt END) AS december_revenue,
+COUNT(DISTINCT(CASE WHEN EXTRACT(MONTH FROM t.saledate)=12 THEN t.saledate END)) AS count_d_dates,
+november_revenue/count_n_dates AS november_d_revenue,
+december_revenue/count_d_dates AS december_d_revenue,
+((december_d_revenue-november_d_revenue)/november_d_revenue)*100 AS increase_in_d_revenue
+FROM strinfo INNER JOIN(
+SELECT sku, store, saledate, amt
+FROM trnsact
+WHERE stype='P' AND (EXTRACT(MONTH FROM saledate)=11 OR EXTRACT(MONTH FROM saledate)=12)) AS t
+ON strinfo.store=t.store INNER JOIN skuinfo ON skuinfo.sku=t.sku INNER JOIN deptinfo ON skuinfo.dept=deptinfo.dept
+WHERE deptinfo.deptdesc IN('Gottex','Jacques','Clinique','Lousivl')
+AND strinfo.city IN('Pine Bluff','Jackson','Odessa','Salina')
+GROUP BY deptinfo.deptdesc, skuinfo.dept, strinfo.store, strinfo.city, strinfo.state
+HAVING count_n_dates>20 AND count_d_dates>20 AND november_revenue>='1000' AND december_revenue>='1000'
+ORDER BY increase_in_d_revenue DESC;
+
+11.
+
+SELECT deptinfo.deptdesc, skuinfo.dept, strinfo.store, strinfo.city, strinfo.state, 
+SUM(CASE WHEN EXTRACT(MONTH FROM t.saledate)=8 THEN t.amt END) AS november_revenue,
+COUNT(DISTINCT(CASE WHEN EXTRACT(MONTH FROM t.saledate)=8 THEN t.saledate END)) AS count_n_dates,
+SUM(CASE WHEN EXTRACT(MONTH FROM t.saledate)=9 THEN t.amt END) AS december_revenue,
+COUNT(DISTINCT(CASE WHEN EXTRACT(MONTH FROM t.saledate)=9 THEN t.saledate END)) AS count_d_dates,
+november_revenue/count_n_dates AS november_d_revenue,
+december_revenue/count_d_dates AS december_d_revenue,
+((december_d_revenue-november_d_revenue)/november_d_revenue)*100 AS increase_in_d_revenue
+FROM strinfo INNER JOIN(
+SELECT sku, store, saledate, amt
+FROM trnsact
+WHERE stype='P' AND (EXTRACT(MONTH FROM saledate)=8 OR EXTRACT(MONTH FROM saledate)=9)) AS t
+ON strinfo.store=t.store INNER JOIN skuinfo ON skuinfo.sku=t.sku INNER JOIN deptinfo ON skuinfo.dept=deptinfo.dept
+WHERE deptinfo.deptdesc IN('Polomen','Clinique')
+GROUP BY deptinfo.deptdesc, skuinfo.dept, strinfo.store, strinfo.city, strinfo.state
+HAVING count_n_dates>20 AND count_d_dates>20
+ORDER BY increase_in_d_revenue ASC;
