@@ -142,3 +142,23 @@ ORDER BY s_month ASC;
 Exercise 10: Which department, in which city and state of what store, had the greatest %
 increase in average daily sales revenue from November to December?
 
+SELECT skuinfo.dept, strinfo.store, strinfo.city, strinfo.state, 
+SUM(CASE WHEN EXTRACT(MONTH FROM t.saledate)=11 THEN t.amt END) AS november_revenue,
+COUNT(DISTINCT(CASE WHEN EXTRACT(MONTH FROM t.saledate)=11 THEN t.saledate END)) AS count_n_dates,
+SUM(CASE WHEN EXTRACT(MONTH FROM t.saledate)=12 THEN t.amt END) AS december_revenue,
+COUNT(DISTINCT(CASE WHEN EXTRACT(MONTH FROM t.saledate)=12 THEN t.saledate END)) AS count_d_dates,
+november_revenue/count_n_dates AS november_d_revenue,
+december_revenue/count_d_dates AS december_d_revenue,
+((december_d_revenue-november_d_revenue)/november_d_revenue)*100 AS increase_in_d_revenue
+FROM strinfo INNER JOIN(
+SELECT sku, store, saledate, amt
+FROM trnsact
+WHERE stype='P' AND (EXTRACT(MONTH FROM saledate)=11 OR EXTRACT(MONTH FROM saledate)=12)) AS t
+ON strinfo.store=t.store INNER JOIN skuinfo ON skuinfo.sku=t.sku
+GROUP BY skuinfo.dept, strinfo.store, strinfo.city, strinfo.state
+HAVING count_n_dates>20 AND count_d_dates>20
+ORDER BY increase_in_d_revenue DESC;
+
+Exercise 11: What is the city and state of the store that had the greatest decrease in
+average daily revenue from August to September?
+
