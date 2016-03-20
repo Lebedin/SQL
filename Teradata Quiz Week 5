@@ -4,6 +4,7 @@ SELECT COUNT(DISTINCT(sku))
 FROM skuinfo
 WHERE brand='Polo fas' AND (size='XXL' OR color='black');
 
+RIGHT
 OUTPUT: 13623
 
 2. There was one store in the database which had only 11 days in one of its months 
@@ -18,6 +19,7 @@ FROM trnsact
 GROUP BY store, EXTRACT(month from saledate), EXTRACT(year from saledate)
 HAVING COUNT(DISTINCT(EXTRACT(day from saledate)))=11);
 
+RIGHT
 OUTPUT: ATLANTA GA
 
 3. Which sku number had the greatest increase in total sales revenue from November to December?
@@ -31,6 +33,7 @@ FROM trnsact
 GROUP BY sku
 ORDER BY increase_in_sales DESC;
 
+RIGHT
 OUTPUT:3949538
 
 4. What vendor has the greatest number of distinct skus in the transaction table that do not exist in the skstinfo table?
@@ -51,6 +54,7 @@ ON uniq_t_skus_not_in_s.sku=s.sku
 GROUP BY s.vendor
 ORDER BY count_skus DESC;
 
+RIGHT
 OUTPUT:5715232
 
 5. What is the brand of the sku with the greatest standard deviation in sprice? 
@@ -77,6 +81,7 @@ HAVING transactions>91) AS hundred_trnsact_skus
 ON s.sku=hundred_trnsact_skus.sku
 ORDER BY stddev DESC;
 
+RIGHT
 OUTPUT:
 CABERNET 178.6
 HART SCH 175.9
@@ -104,6 +109,8 @@ WHERE st.city IN('McAllen','Tucson','Little Rock','Metairie')
 GROUP BY st.store, st.city, st.state
 HAVING count_n_dates>20 AND count_d_dates>20
 ORDER BY increase_in_d_revenue DESC;
+
+WRONG
 
 7. Compare the average daily revenue (as I define it in Teradata Week 5 Exercise Guide) 
 of the store with the highest msa_income and the store with the lowest median msa_income 
@@ -134,6 +141,7 @@ HAVING count_dates>=20
 GROUP BY s_year, s_month, education, income, city, state
 ORDER BY daily_revenue DESC;
 
+RIGHT
 OUTPUT: Spanish Fort, AL, lower revenue / McAllen, TX, higher revenue
 
 8. Divide the msa_income groups up so that msa_incomes between 1 and 20,000 are labeled 'low', msa_incomes between 20,001 and 30,000 are labeled 'med-low', msa_incomes between 30,001 and 40,000 are labeled 'med-high', and msa_incomes between 40,001 and 60,000 are labeled 'high'. Which of these groups has the highest average daily revenue (as I define it in Teradata Week 5 Exercise Guide) per store?
@@ -159,6 +167,8 @@ HAVING count_dates>=20
 GROUP BY income, s_year, s_month
 ORDER BY daily_revenue DESC;
 
+WRONG
+
 9. Divide stores up so that stores with msa populations between 1 and 100,000 are labeled 'very small', stores with msa populations between 100,001 and 200,000 are labeled 'small', stores with msa populations between 200,001 and 500,000 are labeled 'med_small', stores with msa populations between 500,001 and 1,000,000 are labeled 'med_large', stores with msa populations between 1,000,001 and 5,000,000 are labeled “large”, and stores with msa_population greater than 5,000,000 are labeled “very large”. What is the average daily revenue (as I define it in Teradata Week 5 Exercise Guide) for a store in a “very large” population msa?
 
 SELECT AVG(money.daily_revenue)
@@ -177,6 +187,8 @@ FROM (
  WHERE t.stype='P'
  AND NOT((EXTRACT(YEAR FROM t.saledate)='2005') AND (EXTRACT(MONTH FROM t.saledate)='8'))
 GROUP BY t.store) AS money;
+
+RIGHT
 
 10. Which department in which store had the greatest percent increase in average daily sales revenue from November to December, and what city and state was that store located in? Only examine departments whose total sales were at least $1,000 in both November and December.
 
@@ -199,6 +211,8 @@ GROUP BY deptinfo.deptdesc, skuinfo.dept, strinfo.store, strinfo.city, strinfo.s
 HAVING count_n_dates>20 AND count_d_dates>20 AND november_revenue>='1000' AND december_revenue>='1000'
 ORDER BY increase_in_d_revenue DESC;
 
+WRONG
+
 11.
 
 SELECT deptinfo.deptdesc, skuinfo.dept, strinfo.store, strinfo.city, strinfo.state, 
@@ -218,3 +232,5 @@ WHERE deptinfo.deptdesc IN('Polomen','Clinique')
 GROUP BY deptinfo.deptdesc, skuinfo.dept, strinfo.store, strinfo.city, strinfo.state
 HAVING count_n_dates>20 AND count_d_dates>20
 ORDER BY increase_in_d_revenue ASC;
+
+WRONG
