@@ -1,3 +1,5 @@
+Answers: https://docs.google.com/spreadsheets/d/1q4eVSy0Q-ZPHbkvYohBLVdc9hGlj5hWU6RODf30AlfY/edit#gid=0
+
 1. How many distinct skus have the brand “Polo fas”, and are either size “XXL” or “black” in color?
 
 SELECT COUNT(DISTINCT(sku))
